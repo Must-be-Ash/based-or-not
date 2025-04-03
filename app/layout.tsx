@@ -5,6 +5,7 @@ import "./globals.css";
 import "./timer-styles.css";
 import { Providers } from "./providers";
 import { Pixelify_Sans } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
 
 const pixelifySans = Pixelify_Sans({
   subsets: ['latin'],
@@ -68,6 +69,7 @@ export default function RootLayout({
     <html lang="en" className={pixelifySans.variable}>
       <body className="bg-background min-h-screen min-w-full">
         <Providers>{children}</Providers>
+        <Analytics />
       </body>
     </html>
   );
