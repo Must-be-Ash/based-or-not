@@ -227,6 +227,8 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
                   body: `You scored a new time of ${formatTime(validBestTime)} on the precision timer!`,
                 });
                 invalidateHighScores();
+                // After successful submission, allow playing again
+                onPlayAgain();
               }}
               onError={(error: TransactionError) =>
                 console.error("Attestation failed:", error)
@@ -247,15 +249,18 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
           </div>
         )}
         
-        <button
-          type="button"
-          className="px-12 py-4 bg-[#0052FF] text-white text-xl font-bold rounded-full 
-            hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 shadow-lg
-            hover:shadow-blue-200 active:translate-y-1 active:shadow font-pixelify mt-8"
-          onClick={onPlayAgain}
-        >
-          Play Again (${ENTRY_FEE})
-        </button>
+        {/* Only show Play Again button if not a high score */}
+        {!isHighScore && (
+          <button
+            type="button"
+            className="px-12 py-4 bg-[#0052FF] text-white text-xl font-bold rounded-full 
+              hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 shadow-lg
+              hover:shadow-blue-200 active:translate-y-1 active:shadow font-pixelify mt-8"
+            onClick={onPlayAgain}
+          >
+            Play Again (${ENTRY_FEE})
+          </button>
+        )}
       </div>
     </div>
   );

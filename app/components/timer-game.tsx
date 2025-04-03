@@ -10,6 +10,7 @@ import React, {
   useContext,
 } from "react";
 import { useOpenUrl } from "@coinbase/onchainkit/minikit";
+import { useAccount } from "wagmi";
 import {
   ConnectWallet,
   ConnectWalletText,
@@ -27,11 +28,48 @@ import {
 import { type Address as AddressType } from "viem";
 import ArrowSvg from "../svg/ArrowSvg";
 import GameCompleteScreen from "./game-complete";
+import { AnimatedShinyText } from "./animated-shiny-text";
+import { NumberTicker } from "./number-ticker";
+import {
+  Transaction,
+  TransactionButton,
+  TransactionToast,
+  TransactionToastAction,
+  TransactionToastIcon,
+  TransactionToastLabel,
+  TransactionError,
+} from "@coinbase/onchainkit/transaction";
 
 const MAX_SCORES = 8;
 const ENTRY_FEE = 1; // $1 to play
-const COUNTDOWN_FROM = 15; // 15 seconds countdown
+const COUNTDOWN_FROM = 6; // 6 seconds countdown
 const ROUNDS_PER_GAME = 2; // Two rounds per game
+const JACKPOT_ADDRESS = "0x5ce0D48FAD146F39cc908812Ef50ccD821e19C35";
+const USDC_CONTRACT_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base
+const USDC_CONTRACT_ETH = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // USDC on ETH mainnet
+const EAS_GRAPHQL_URL = "https://base.easscan.org/graphql";
+const SCHEMA_UID = "0xdc3cf7f28b4b5255ce732cbf99fe906a5bc13fbd764e2463ba6034b4e1881835"; // Timer game schema
+
+// ERC20 token ABI (minimal for transfer function)
+const tokenABI = [
+  {
+    name: "transfer",
+    type: "function" as const,
+    stateMutability: "nonpayable" as const,
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "balanceOf",
+    type: "function" as const,
+    stateMutability: "view" as const,
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "balance", type: "uint256" }],
+  },
+] as const;
 
 const GameState = {
   INTRO: 0,
@@ -47,10 +85,6 @@ export type Score = {
   address: AddressType;
   time: number; // Time in milliseconds
 };
-
-const EAS_GRAPHQL_URL = "https://base.easscan.org/graphql";
-const SCHEMA_UID =
-  "0xdc3cf7f28b4b5255ce732cbf99fe906a5bc13fbd764e2463ba6034b4e1881835"; // We'll update this when we create a new schema
 
 // Mock data for when the API is unavailable
 const MOCK_SCORES: Score[] = [
@@ -162,6 +196,63 @@ async function fetchLastAttestations() {
   }
 }
 
+async function fetchJackpotAmount() {
+  try {
+    // Get the chain ID to determine which USDC contract to use
+    const response = await fetch('/api/network');
+    const { chainId } = await response.json();
+    
+    // Default to Base if we can't determine the network
+    const usdcContract = chainId === 1 ? USDC_CONTRACT_ETH : USDC_CONTRACT_BASE;
+    
+    // Fetch the USDC balance using public RPC endpoints
+    const baseRpcUrl = chainId === 1 
+      ? 'https://ethereum.publicnode.com' 
+      : 'https://base.publicnode.com';
+    
+    // Build the balanceOf request
+    const data = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_call',
+      params: [
+        {
+          to: usdcContract,
+          data: `0x70a08231000000000000000000000000${JACKPOT_ADDRESS.substring(2)}` // balanceOf function signature + address
+        },
+        'latest'
+      ]
+    };
+    
+    const balanceResponse = await fetch(baseRpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await balanceResponse.json();
+    
+    if (result.result) {
+      // Convert hex result to decimal and adjust for 6 decimals (USDC has 6 decimals)
+      const balance = parseInt(result.result, 16) / 1000000;
+      return balance || 0; // Return actual balance or 0 if null/undefined
+    }
+    
+    // If request failed, fall back to current active players estimate
+    const scores = await fetchLastAttestations();
+    return scores.length * ENTRY_FEE || 0;
+  } catch (error) {
+    console.error('Failed to fetch jackpot amount:', error);
+    // Fall back to a basic calculation based on active players
+    try {
+      const scores = await fetchLastAttestations();
+      return scores.length * ENTRY_FEE || 0;
+    } catch {
+      return 0; // Default to 0 if everything fails
+    }
+  }
+}
+
 type HighScoresContextType = {
   highScores: Score[];
   checkIsHighScore: (currentTime: number | null) => boolean;
@@ -195,9 +286,9 @@ function HighScoresProvider({ children }: { children: React.ReactNode }) {
       const scores = await fetchLastAttestations();
       setHighScores(scores ?? []);
       
-      // In a real implementation, we would fetch the jackpot amount from a contract or API
-      // For demo purposes, we'll estimate it based on number of players * entry fee
-      setJackpotAmount(scores.length * ENTRY_FEE);
+      // Fetch the actual jackpot amount from the contract
+      const amount = await fetchJackpotAmount();
+      setJackpotAmount(amount);
     }
   }, [invalidate]);
 
@@ -291,6 +382,7 @@ type IntroProps = {
 function Intro({ onStartGame }: IntroProps) {
   const { highScores, jackpotAmount, loadHighScores } = useHighScores();
   const openUrl = useOpenUrl();
+  const { address, chainId } = useAccount();
 
   useEffect(() => {
     loadHighScores();
@@ -300,6 +392,9 @@ function Intro({ onStartGame }: IntroProps) {
     openUrl(`https://basescan.org/tx/${score.transactionHash}`);
   };
 
+  // Determine which USDC contract to use based on the connected network
+  const usdcContract = chainId === 1 ? USDC_CONTRACT_ETH : USDC_CONTRACT_BASE;
+
   return (
     <div className="absolute inset-0 flex flex-col items-center bg-[#E5E5E5] z-10 m-[10px] mb-[30px] pb-6 rounded-xl">
       <div className="mt-12 text-center max-w-[90%]">
@@ -307,7 +402,10 @@ function Intro({ onStartGame }: IntroProps) {
           PRECISION TIMER
         </h1>
         <p className="text-xl mb-2 text-gray-700 font-serif">
-          Press the button as close to <span className="font-mono font-bold text-blue-600 timer-cursor">00.000</span> as possible!
+          Press the button as close to <span className="font-mono font-bold text-blue-600">00.000</span> as possible{" "}
+          <AnimatedShinyText className="font-mono text-xl font-bold text-blue-600 dark:text-blue-500">
+            WITHOUT HITTING ZERO MFER!
+          </AnimatedShinyText>
         </p>
         <p className="text-lg mb-4 text-gray-600 font-serif">${ENTRY_FEE} to play • {ROUNDS_PER_GAME} rounds • Don&apos;t hit zero!</p>
       </div>
@@ -315,20 +413,64 @@ function Intro({ onStartGame }: IntroProps) {
       <div className="flex flex-col items-center justify-between flex-1 w-full gap-4 pb-12">
         <div className="flex flex-col items-center gap-4">
           <div className="text-xl font-semibold font-serif text-center">CURRENT JACKPOT</div>
-          <div className="timer-jackpot mb-1">
-            ${jackpotAmount}
+          <div className="timer-jackpot mb-4">
+            <span className="jackpot-dollar">$</span>
+            <NumberTicker 
+              value={jackpotAmount} 
+              className="whitespace-pre-wrap text-[4.5rem] font-bold font-mono tracking-tighter text-[#FF9500] glow-text" 
+            />
           </div>
           
-          <button
-            type="button"
-            className="px-10 py-4 bg-[#0052FF] text-white text-2xl font-bold rounded-full 
-              hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 
-              [box-shadow:0_8px_0_0_#002299,0_12px_6px_0_rgba(0,34,153,0.3)]
-              hover:shadow-blue-200 active:translate-y-1 active:[box-shadow:0_4px_0_0_#002299] timer-button-press font-serif"
-            onClick={onStartGame}
-          >
-            Start Game (${ENTRY_FEE})
-          </button>
+          {!address ? (
+            <div>
+              <Wallet>
+                <ConnectWallet className="px-10 py-4 bg-[#0052FF] text-white text-2xl font-bold rounded-full 
+                  hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 
+                  [box-shadow:0_8px_0_0_#002299,0_12px_6px_0_rgba(0,34,153,0.3)]
+                  hover:shadow-blue-200 active:translate-y-1 active:[box-shadow:0_4px_0_0_#002299] timer-button-press font-serif">
+                  <ConnectWalletText>Connect Wallet to Play</ConnectWalletText>
+                </ConnectWallet>
+              </Wallet>
+            </div>
+          ) : (
+            <div>
+              <Transaction
+                calls={[
+                  {
+                    address: usdcContract,
+                    abi: tokenABI,
+                    functionName: "transfer",
+                    args: [
+                      JACKPOT_ADDRESS, 
+                      BigInt(1000000) // $1 USDC (6 decimals)
+                    ],
+                  },
+                ]}
+                onSuccess={() => {
+                  // Start the game after successful payment
+                  onStartGame();
+                  // Refresh jackpot amount
+                  loadHighScores();
+                }}
+                onError={(error: TransactionError) =>
+                  console.error("Payment failed:", error)
+                }
+              >
+                <TransactionButton
+                  text={`Start Game ($${ENTRY_FEE})`}
+                  className="px-10 py-4 bg-[#0052FF] text-white text-2xl font-bold rounded-full 
+                    hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 
+                    [box-shadow:0_8px_0_0_#002299,0_12px_6px_0_rgba(0,34,153,0.3)]
+                    hover:shadow-blue-200 active:translate-y-1 active:[box-shadow:0_4px_0_0_#002299] timer-button-press font-serif"
+                />
+                <TransactionToast className="mb-4">
+                  <TransactionToastIcon />
+                  <TransactionToastLabel />
+                  <TransactionToastAction />
+                </TransactionToast>
+              </Transaction>
+            </div>
+          )}
         </div>
         
         <div className="relative w-full flex flex-col items-center mt-8">
@@ -391,7 +533,7 @@ function TimerDisplay({ time, round, bestTime, isPressedTime }: TimerDisplayProp
       <div className="text-2xl mb-4 font-semibold font-serif">Round {round}/{ROUNDS_PER_GAME}</div>
       <div className={`text-8xl font-serif font-bold mb-6 transition-all duration-200 time-highlight ${timeColor} 
         ${isPressedTime ? 'scale-125 animate-ping-once' : 'animate-pulse-slow'}`}>
-        {formatTime(time)}{!isPressedTime && <span className="timer-cursor"></span>}
+        {formatTime(time)}
       </div>
       {bestTime !== null && (
         <div className="text-lg bg-white/30 px-4 py-1 rounded-full shadow-inner font-serif">
@@ -413,6 +555,7 @@ export default function TimerGame() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isButtonHovered, setIsButtonHovered] = useState(false);
   const [isButtonPressed, setIsButtonPressed] = useState(false);
+  const { address } = useAccount(); // Add wallet account hook
 
   // Clear interval on unmount
   useEffect(() => {
@@ -436,7 +579,7 @@ export default function TimerGame() {
       
       intervalRef.current = setInterval(() => {
         setTimeRemaining(prev => {
-          const newTime = Math.max(0, prev - 0.01);
+          const newTime = Math.max(0, prev - 0.004); // Increase decrement to match real seconds
           if (newTime === 0) {
             // If timer hits zero, player loses this round but should continue
             clearInterval(intervalRef.current!);
@@ -456,7 +599,7 @@ export default function TimerGame() {
           }
           return newTime;
         });
-      }, 10); // Update every 10ms for smooth countdown
+      }, 1); // Update every 1ms for accurate millisecond countdown
     } else {
       // Clear the timer when not in a round
       if (intervalRef.current) {
@@ -493,13 +636,16 @@ export default function TimerGame() {
   }, [round1Time, round2Time]);
 
   const handleStartGame = useCallback(() => {
+    // Only allow starting the game if wallet is connected
+    if (!address) return;
+    
     // In a real implementation, we would process the payment here
     setGameState(GameState.ROUND_1);
     setRound(1);
     setRound1Time(null);
     setRound2Time(null);
     setBestTime(null);
-  }, []);
+  }, [address]);
 
   const handleButtonPress = useCallback(() => {
     if (pressedTime !== null) return; // Already pressed in this round
