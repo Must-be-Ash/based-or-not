@@ -406,7 +406,7 @@ function Intro({ onStartGame }: IntroProps) {
             WITHOUT HITTING ZERO MFER!
           </AnimatedShinyText>
         </p>
-        <p className="text-lg mb-4 text-gray-600 font-serif">${ENTRY_FEE} USDCto play • {ROUNDS_PER_GAME} rounds • Don&apos;t hit zero!</p>
+        <p className="text-lg mb-4 text-gray-600 font-serif">${ENTRY_FEE} USDC to play • {ROUNDS_PER_GAME} rounds • Don&apos;t hit zero!</p>
       </div>
       
       <div className="flex flex-col items-center justify-between flex-1 w-full gap-4 pb-12">
