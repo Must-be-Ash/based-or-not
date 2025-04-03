@@ -477,8 +477,10 @@ function Intro({ onStartGame }: IntroProps) {
           <h1 className="leaderboard-title mb-1">LEADERBOARD</h1>
           <div className="leaderboard-divider mb-2"></div>
           
-          <div className="w-[90%] max-w-[400px] overflow-hidden rounded-lg bg-white/30 backdrop-blur-sm shadow-lg max-h-[200px] overflow-y-auto">
-            {highScores.length > 0 ? (
+          <div className="leaderboard-container w-[90%] max-w-[400px] overflow-hidden rounded-lg bg-white/30 backdrop-blur-sm shadow-lg max-h-[200px] overflow-y-auto">
+            {highScores.length === 0 ? (
+              <div className="p-3 text-center font-serif">No scores yet. Be the first to play!</div>
+            ) : (
               highScores
                 .sort((a, b) => a.time - b.time) // Sort by time (ascending)
                 .map((score, index) => (
@@ -508,8 +510,6 @@ function Intro({ onStartGame }: IntroProps) {
                     </div>
                   </button>
                 ))
-            ) : (
-              <div className="p-3 text-center font-serif">No scores yet. Be the first to play!</div>
             )}
           </div>
         </div>

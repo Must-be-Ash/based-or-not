@@ -67,7 +67,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={pixelifySans.variable}>
-      <body className="bg-background min-h-screen min-w-full">
+      <body className="bg-[#e5e7eb] min-h-screen min-w-full">
         <Providers>{children}</Providers>
         <Analytics />
       </body>

@@ -158,17 +158,30 @@
 /* Leaderboard styles */
 .leaderboard-title {
   font-family: var(--font-pixelify-sans), sans-serif;
-  font-size: 1.25rem;
-  letter-spacing: 0.1em;
+  font-size: 1.75rem;
+  font-weight: bold;
+  text-align: center;
   color: #4F46E5;
   text-transform: uppercase;
-  margin: 0.5rem 0 0 0;
-  text-align: center;
+  letter-spacing: 0.1em;
+  background: linear-gradient(to bottom, #4F46E5, #818CF8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .leaderboard-divider {
   height: 2px;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, #4F46E5, transparent);
-  margin: 0 0 0.5rem 0;
+  width: 80%;
+  max-width: 400px;
+  background: linear-gradient(to right, rgba(79, 70, 229, 0), rgba(79, 70, 229, 0.8), rgba(79, 70, 229, 0));
+}
+
+.leaderboard-container {
+  margin-bottom: 20px;
+}
+
+/* Add these styles to make sure the background covers the entire page */
+html, body {
+  background-color: #e5e7eb;
+  min-height: 100vh;
 } 
