@@ -166,7 +166,7 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
           fid: previousHolderAddress, // In a real implementation, you'd map the address to a Farcaster ID
           notification: {
             title: 'Your record has been broken!',
-            body: `Someone just scored ${formatTime(newTime)} and broke your record on the precision timer!`,
+            body: `Someone just scored ${formatTime(newTime)} and broke your record on the Timed Right!`,
           }
         }),
       });
@@ -256,7 +256,7 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
               onSuccess={async () => {
                 await sendNotification({
                   title: "Congratulations!",
-                  body: `You scored a new time of ${formatTime(validBestTime)} on the precision timer!`,
+                  body: `You scored a new time of ${formatTime(validBestTime)} on the Timed Right!`,
                 });
                 
                 // If this score broke a record, notify the previous record holder

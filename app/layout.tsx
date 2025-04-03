@@ -46,10 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
         version: process.env.NEXT_PUBLIC_VERSION,
         imageUrl: process.env.NEXT_PUBLIC_IMAGE_URL,
         button: {
-          title: `Launch Precision Timer`,
+          title: `Launch Timed Right`,
           action: {
             type: "launch_frame",
-            name: "Precision Timer",
+            name: "Timed Right",
             url: URL,
             splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_IMAGE_URL,
             splashBackgroundColor: `#${process.env.NEXT_PUBLIC_SPLASH_BACKGROUND_COLOR}`,

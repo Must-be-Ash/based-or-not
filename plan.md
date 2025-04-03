@@ -1,4 +1,4 @@
-# Precision Timer Game - Project Plan
+# Timed Right Game - Project Plan
 
 ## Project Objective
 To transform the existing Snake game into a precision-based timing game where players:
@@ -84,7 +84,7 @@ To transform the existing Snake game into a precision-based timing game where pl
 
 ### File Structure Changes
 1. **New Files to Create:**
-   - `app/components/timer-game.tsx`: Main game component for the precision timer game
+   - `app/components/timer-game.tsx`: Main game component for the Timed Right game
    - `app/svg/TimerLogo.tsx`: Logo for the new game
    - `app/svg/ButtonSvg.tsx`: Button visual component
    - `public/timer.png`: Game icon/splash image
@@ -106,7 +106,7 @@ To transform the existing Snake game into a precision-based timing game where pl
    - `public/snake.png`: Will be replaced by timer.png
 
 ### Game Logic Changes
-1. Replace Snake game with Precision Timer:
+1. Replace Snake game with Timed Right:
    - Remove snake movement and collision detection
    - Implement countdown timer from 15 seconds to 0
    - Create button that records timing when pressed
