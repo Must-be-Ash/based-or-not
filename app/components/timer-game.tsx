@@ -399,8 +399,7 @@ function Intro({ onStartGame }: IntroProps) {
     <div className="absolute inset-0 flex flex-col items-center bg-[#E5E5E5] z-10 m-[10px] mb-[30px] pb-6 rounded-xl">
       <div className="mt-12 text-center max-w-[90%]">
         <h1 className="text-5xl font-bold mb-3 font-serif text-blue-600 leading-tight tracking-tight">
-          PRECISION TIMER
-        </h1>
+          Timed Right        </h1>
         <p className="text-xl mb-2 text-gray-700 font-serif">
           Press the button as close to <span className="font-mono font-bold text-blue-600">00.000</span> as possible{" "}
           <AnimatedShinyText className="font-mono text-xl font-bold text-blue-600 dark:text-blue-500">

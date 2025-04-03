@@ -42,8 +42,7 @@ export default function TimerLogo({
           fill="url(#gradientBg)"
           className={animate ? "animate-pulse" : ""}
         >
-          PRECISION TIMER
-        </text>
+          Timed Right        </text>
         
         {/* Timer Circle */}
         <circle
