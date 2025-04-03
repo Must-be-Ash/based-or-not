@@ -5,14 +5,10 @@ import {
   useAddFrame,
   useOpenUrl,
 } from "@coinbase/onchainkit/minikit";
-import { Name, Identity, Badge } from "@coinbase/onchainkit/identity";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Snake from "./components/snake";
-import { useAccount } from "wagmi";
+import TimerGame from "./components/timer-game";
 import Check from "./svg/Check";
-
-const SCHEMA_UID =
-  "0x7889a09fb295b0a0c63a3d7903c4f00f7896cca4fa64d2c1313f8547390b7d39";
+import { WalletControl } from "./components/wallet-control";
 
 export default function App() {
   const { setFrameReady, isFrameReady, context } = useMiniKit();
@@ -20,7 +16,6 @@ export default function App() {
 
   const addFrame = useAddFrame();
   const openUrl = useOpenUrl();
-  const { address } = useAccount();
 
   useEffect(() => {
     if (!isFrameReady) {
@@ -59,44 +54,43 @@ export default function App() {
   }, [context, handleAddFrame, frameAdded]);
 
   return (
-    <div className="flex flex-col min-h-screen sm:min-h-[820px] font-sans bg-[#E5E5E5] text-black items-center snake-dark relative">
-      <div className="w-screen max-w-[520px]">
-        <header className="mr-2 mt-1 flex justify-between">
-          <div className="justify-start pl-1">
-            {address ? (
-              <Identity
-                address={address}
-                schemaId={SCHEMA_UID}
-                className="!bg-inherit p-0 [&>div]:space-x-2"
-              >
-                <Name className="text-inherit">
-                  <Badge
-                    tooltip="High Scorer"
-                    className="!bg-inherit high-score-badge"
-                  />
-                </Name>
-              </Identity>
-            ) : (
-              <div className="pl-2 pt-1 text-gray-500 text-sm font-semibold">
-                NOT CONNECTED
-              </div>
-            )}
+    <div className="flex flex-col min-h-screen sm:min-h-[900px] font-sans bg-[#E5E5E5] text-black items-center timer-dark relative">
+      <div className="w-screen max-w-[520px] h-full min-h-[900px] relative">
+        <header className="flex justify-between items-center py-3 px-4 absolute top-0 w-full z-30">
+          <div className="flex items-center justify-start">
+            <WalletControl />
           </div>
-          <div className="pr-1 justify-end">{saveFrameButton}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-gray-700 text-sm font-semibold">
+              mustbeash.base.eth
+            </div>
+            {saveFrameButton}
+          </div>
         </header>
 
-        <main className="font-serif">
-          <Snake />
+        <main className="font-serif h-full py-8">
+          <TimerGame />
         </main>
 
         <footer className="absolute bottom-4 flex items-center w-screen max-w-[520px] justify-center">
-          <button
-            type="button"
-            className="mt-4 ml-4 px-2 py-1 flex justify-start rounded-2xl font-semibold opacity-40 border border-black text-xs"
-            onClick={() => openUrl("https://base.org/builders/minikit")}
-          >
-            BUILT ON BASE WITH MINIKIT
-          </button>
+          <div className="mt-4 ml-4 px-4 py-2 flex justify-start rounded-2xl font-semibold opacity-40 border border-black text-xs">
+            BUILT BY{" "}
+            <button
+              type="button"
+              className="mx-1 underline"
+              onClick={() => openUrl("https://x.com/Must_be_Ash")}
+            >
+              @must_be_ash
+            </button>{" "}
+            AT{" "}
+            <button
+              type="button"
+              className="mx-1 underline"
+              onClick={() => openUrl("https://x.com/navigate_ai")}
+            >
+              @navigate_ai
+            </button>
+          </div>
         </footer>
       </div>
     </div>

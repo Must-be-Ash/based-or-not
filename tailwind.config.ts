@@ -49,11 +49,27 @@ const config: Config = {
       },
       animation: {
         "fade-out": "1s fadeOut 3s ease-out forwards",
+        "fadeIn": "fadeIn 0.5s ease-in-out",
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "ping-once": "ping 0.8s cubic-bezier(0, 0, 0.2, 1) 1",
+        "fade-in-right": "fadeInRight 0.4s ease-out",
       },
       keyframes: {
         fadeOut: {
           "0%": { opacity: "1" },
           "100%": { opacity: "0" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        fadeInRight: {
+          "0%": { opacity: "0", transform: "translateX(20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        ping: {
+          "0%": { transform: "scale(1)", opacity: "1" },
+          "75%, 100%": { transform: "scale(1.2)", opacity: "0" },
         },
       },
     },

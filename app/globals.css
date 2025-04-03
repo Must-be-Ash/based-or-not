@@ -18,17 +18,25 @@
   touch-action: manipulation;
 }
 
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-
-  font-family: "Pixelify Sans", sans-serif;
+  font-family: var(--font-pixelify-sans), sans-serif;
   font-optical-sizing: auto;
   font-weight: 400;
   font-style: normal;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-.high-score-badge + div {
+.timer-badge + div {
   transform: translate(10px, 20px) !important;
 }
 
@@ -36,4 +44,10 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+.timer-jackpot {
+  font-family: var(--font-pixelify-sans), sans-serif;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
 }

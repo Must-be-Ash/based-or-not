@@ -1,0 +1,174 @@
+/* Timer Game Custom Styles */
+
+/* Blinking cursor animation for the timer */
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Float animation for elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Ripple effect animation */
+@keyframes ripple {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Timer Specific Styles */
+.timer-cursor::after {
+  content: '|';
+  animation: blink-cursor 1s infinite;
+  margin-left: 2px;
+}
+
+.timer-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.timer-jackpot {
+  position: relative;
+  z-index: 1;
+  font-size: 3.5rem;
+  font-family: var(--font-pixelify-sans), sans-serif;
+  margin: 1rem 0 2rem 0;
+  letter-spacing: 0.05em;
+  color: #F59E0B;
+  text-align: center;
+}
+
+.timer-jackpot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.3) 0%, rgba(251, 191, 36, 0) 70%);
+  transform: translate(-50%, -50%);
+  z-index: -1;
+  animation: ripple 3s linear infinite;
+}
+
+/* Button effect styles */
+.timer-button-press {
+  position: relative;
+  overflow: hidden;
+}
+
+.timer-button-press::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.5s, opacity 0.5s;
+}
+
+.timer-button-press:active::after {
+  transform: translate(-50%, -50%) scale(3);
+  opacity: 1;
+  transition: 0s;
+}
+
+/* Glass morphism effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+}
+
+/* Timer badge styling */
+.timer-badge {
+  position: relative;
+}
+
+.timer-badge::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: #0052FF;
+  border-radius: 50%;
+  top: -2px;
+  right: -2px;
+  box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.3);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Timer score highlight */
+.time-highlight {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+/* Confetti animation for high scores */
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(1000px) rotate(720deg); }
+}
+
+.confetti-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.confetti {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: #0052FF;
+  top: -10px;
+  animation: confetti 5s ease-in-out infinite;
+}
+
+.confetti:nth-child(odd) {
+  background-color: #FFD700;
+}
+
+.confetti:nth-child(3n) {
+  background-color: #FF6B6B;
+}
+
+.confetti:nth-child(4n) {
+  background-color: #4CAF50;
+}
+
+/* Leaderboard styles */
+.leaderboard-title {
+  font-family: var(--font-pixelify-sans), sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: #4F46E5;
+  text-transform: uppercase;
+  margin: 2rem 0 1rem 0;
+  text-align: center;
+}
+
+.leaderboard-divider {
+  height: 2px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, #4F46E5, transparent);
+  margin: 0.5rem 0 1.5rem 0;
+} 
