@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useNotification } from "@coinbase/onchainkit/minikit";
+import { useNotification, useOpenUrl } from "@coinbase/onchainkit/minikit";
 import {
   Transaction,
   TransactionButton,
@@ -114,9 +114,27 @@ type GameCompleteProps = {
   onPlayAgain: () => void;
 };
 
+// Function to share score to Farcaster
+function shareToFarcaster(score: number): string {
+  const formattedScore = formatTime(score);
+  const appUrl = "https://timedright.vercel.app/";
+  
+  // Create the sharing URL for Farcaster
+  const text = encodeURIComponent(`🎯 I just scored ${formattedScore} on Timed Right! 
+  
+Can you beat my precision timing? Try your luck at the jackpot!
+
+Play now: ${appUrl}
+
+`);
+  
+  return `https://warpcast.com/~/compose?text=${text}`;
+}
+
 export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProps) {
   const { invalidateHighScores, checkIsHighScore, highScores } = useHighScores();
   const sendNotification = useNotification();
+  const openUrl = useOpenUrl();
   const { address } = useAccount();
   
   // Only show the "no valid time" screen if bestTime is completely null
@@ -179,6 +197,14 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
     }
   };
   
+  // Function to handle sharing to Farcaster
+  const handleShareToFarcaster = () => {
+    if (validBestTime) {
+      const shareUrl = shareToFarcaster(validBestTime);
+      openUrl(shareUrl);
+    }
+  };
+  
   return (
     <div className="absolute inset-0 flex flex-col bg-[#E5E5E5] z-20 m-[10px] mb-[30px] rounded-xl animate-fadeIn">
       {isHighScore && (
@@ -227,63 +253,81 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
         )}
         
         {isHighScore && address && (
-          <div className="flex justify-center w-full">
-            <Transaction
-              calls={[
-                {
-                  address: EAS_CONTRACT,
-                  abi: easABI,
-                  functionName: "attest",
-                  args: [
-                    {
-                      schema: SCHEMA_UID,
-                      data: {
-                        recipient: address,
-                        expirationTime: BigInt(0),
-                        revocable: false,
-                        refUID:
-                          "0x0000000000000000000000000000000000000000000000000000000000000000",
-                        data: encodeAbiParameters(
-                          [{ type: "string" }],
-                          [`${address} scored ${validBestTime.toFixed(4)} on timer`],
-                        ),
-                        value: BigInt(0),
+          <div className="flex flex-col items-center w-full gap-4">
+            <div className="flex justify-center w-full">
+              <Transaction
+                calls={[
+                  {
+                    address: EAS_CONTRACT,
+                    abi: easABI,
+                    functionName: "attest",
+                    args: [
+                      {
+                        schema: SCHEMA_UID,
+                        data: {
+                          recipient: address,
+                          expirationTime: BigInt(0),
+                          revocable: false,
+                          refUID:
+                            "0x0000000000000000000000000000000000000000000000000000000000000000",
+                          data: encodeAbiParameters(
+                            [{ type: "string" }],
+                            [`${address} scored ${validBestTime.toFixed(4)} on timer`],
+                          ),
+                          value: BigInt(0),
+                        },
                       },
-                    },
-                  ],
-                },
-              ]}
-              onSuccess={async () => {
-                await sendNotification({
-                  title: "Congratulations!",
-                  body: `You scored a new time of ${formatTime(validBestTime)} on the Timed Right!`,
-                });
-                
-                // If this score broke a record, notify the previous record holder
-                if (isNewRecord && previousRecordHolder) {
-                  await notifyPreviousRecordHolder(previousRecordHolder, validBestTime);
+                    ],
+                  },
+                ]}
+                onSuccess={async () => {
+                  await sendNotification({
+                    title: "Congratulations!",
+                    body: `You scored a new time of ${formatTime(validBestTime)} on the precision timer!`,
+                  });
+                  
+                  // If this score broke a record, notify the previous record holder
+                  if (isNewRecord && previousRecordHolder) {
+                    await notifyPreviousRecordHolder(previousRecordHolder, validBestTime);
+                  }
+                  
+                  invalidateHighScores();
+                  // After successful submission, allow playing again
+                  onPlayAgain();
+                }}
+                onError={(error: TransactionError) =>
+                  console.error("Attestation failed:", error)
                 }
-                
-                invalidateHighScores();
-                // After successful submission, allow playing again
-                onPlayAgain();
-              }}
-              onError={(error: TransactionError) =>
-                console.error("Attestation failed:", error)
-              }
+              >
+                <TransactionButton
+                  text="Submit your time"
+                  className="px-8 py-4 bg-[#0052FF] text-white text-xl font-bold rounded-full 
+                    hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 shadow-lg
+                    hover:shadow-blue-200 active:translate-y-1 font-pixelify"
+                />
+                <TransactionToast className="mb-4">
+                  <TransactionToastIcon />
+                  <TransactionToastLabel />
+                  <TransactionToastAction />
+                </TransactionToast>
+              </Transaction>
+            </div>
+            
+            <button
+              type="button"
+              className="px-8 py-3 bg-[#9c5cff] text-white text-lg font-bold rounded-full 
+                hover:bg-[#7b38df] transform hover:scale-105 transition-all duration-200 shadow-lg
+                hover:shadow-purple-200 active:translate-y-1 active:shadow flex items-center gap-2 font-pixelify"
+              onClick={handleShareToFarcaster}
             >
-              <TransactionButton
-                text="Submit your time"
-                className="px-8 py-4 bg-[#0052FF] text-white text-xl font-bold rounded-full 
-                  hover:bg-[#0052FF]/90 transform hover:scale-105 transition-all duration-200 shadow-lg
-                  hover:shadow-blue-200 active:translate-y-1 font-pixelify"
-              />
-              <TransactionToast className="mb-4">
-                <TransactionToastIcon />
-                <TransactionToastLabel />
-                <TransactionToastAction />
-              </TransactionToast>
-            </Transaction>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 16.5a6 6 0 0 0-6 6"></path>
+                <path d="M6 10.5a6 6 0 0 1 6-6"></path>
+                <path d="M6 13.5a6 6 0 0 0 6 6"></path>
+                <path d="M18 7.5a6 6 0 0 1-6 6"></path>
+              </svg>
+              Share to Farcaster
+            </button>
           </div>
         )}
         
@@ -297,6 +341,24 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
             onClick={onPlayAgain}
           >
             Play Again (${ENTRY_FEE})
+          </button>
+        )}
+
+        {!isHighScore && validBestTime && address && (
+          <button
+            type="button"
+            className="px-8 py-3 bg-[#9c5cff] text-white text-lg font-bold rounded-full 
+              hover:bg-[#7b38df] transform hover:scale-105 transition-all duration-200 shadow-lg
+              hover:shadow-purple-200 active:translate-y-1 active:shadow flex items-center gap-2 font-pixelify mb-4"
+            onClick={handleShareToFarcaster}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 16.5a6 6 0 0 0-6 6"></path>
+              <path d="M6 10.5a6 6 0 0 1 6-6"></path>
+              <path d="M6 13.5a6 6 0 0 0 6 6"></path>
+              <path d="M18 7.5a6 6 0 0 1-6 6"></path>
+            </svg>
+            Share to Farcaster
           </button>
         )}
       </div>
