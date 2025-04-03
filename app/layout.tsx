@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const URL = process.env.NEXT_PUBLIC_URL;
   return {
-    title: "Precision Timer Game",
+    title: "Timed Right",
     description:
       "Test your precision timing skills! Press the button as close to 00.000 as possible without hitting zero.",
     other: {

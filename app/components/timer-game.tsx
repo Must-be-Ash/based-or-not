@@ -42,7 +42,7 @@ import {
 
 const MAX_SCORES = 8;
 const ENTRY_FEE = 1; // $1 to play
-const COUNTDOWN_FROM = 6; // 6 seconds countdown
+const COUNTDOWN_FROM = 7; // 6 seconds countdown
 const ROUNDS_PER_GAME = 2; // Two rounds per game
 const JACKPOT_ADDRESS = "0x5ce0D48FAD146F39cc908812Ef50ccD821e19C35";
 const USDC_CONTRACT_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"; // USDC on Base

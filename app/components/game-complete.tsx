@@ -115,7 +115,7 @@ type GameCompleteProps = {
 };
 
 export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProps) {
-  const { invalidateHighScores, checkIsHighScore } = useHighScores();
+  const { invalidateHighScores, checkIsHighScore, highScores } = useHighScores();
   const sendNotification = useNotification();
   const { address } = useAccount();
   
@@ -146,6 +146,38 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
   // At this point, bestTime is guaranteed to be a valid number (either from round 1 or round 2)
   const isHighScore = checkIsHighScore(bestTime);
   const validBestTime = bestTime; // This is safe now since we've checked it's not null
+
+  // Check if this score breaks the current record
+  const isNewRecord = highScores.length > 0 && validBestTime < highScores[0].time;
+  const previousRecordHolder = isNewRecord ? highScores[0].address : null;
+  
+  // Function to notify the previous record holder
+  const notifyPreviousRecordHolder = async (previousHolderAddress: string, newTime: number) => {
+    try {
+      // Fetch the FID (Farcaster ID) for the address - in a real implementation,
+      // this would need to be mapped from the wallet address to a Farcaster ID
+      // For now, we'll use a simple API call to simulate this
+      const response = await fetch('/api/notify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fid: previousHolderAddress, // In a real implementation, you'd map the address to a Farcaster ID
+          notification: {
+            title: 'Your record has been broken!',
+            body: `Someone just scored ${formatTime(newTime)} and broke your record on the precision timer!`,
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to send notification');
+      }
+    } catch (error) {
+      console.error('Error sending notification:', error);
+    }
+  };
   
   return (
     <div className="absolute inset-0 flex flex-col bg-[#E5E5E5] z-20 m-[10px] mb-[30px] rounded-xl animate-fadeIn">
@@ -226,6 +258,12 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
                   title: "Congratulations!",
                   body: `You scored a new time of ${formatTime(validBestTime)} on the precision timer!`,
                 });
+                
+                // If this score broke a record, notify the previous record holder
+                if (isNewRecord && previousRecordHolder) {
+                  await notifyPreviousRecordHolder(previousRecordHolder, validBestTime);
+                }
+                
                 invalidateHighScores();
                 // After successful submission, allow playing again
                 onPlayAgain();
