@@ -25,6 +25,21 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Timed Right",
     description:
       "Test your precision timing skills! Press the button as close to 00.000 as possible without hitting zero.",
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: 'any' },
+        { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      ],
+      apple: [
+        { url: '/apple-touch-icon.png' }
+      ],
+      other: [
+        { url: '/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+        { url: '/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
+      ]
+    },
+    manifest: '/site.webmanifest',
     other: {
       "fc:frame": JSON.stringify({
         version: process.env.NEXT_PUBLIC_VERSION,
