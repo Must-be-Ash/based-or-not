@@ -2,7 +2,7 @@
 
 ## Project Objective
 To transform the existing Snake game into a precision-based timing game where players:
-- Pay $1 to play two rounds
+- Pay $1 USDC to play two rounds
 - Try to press a button as close as possible to 00.000 seconds (without going to zero)
 - Track scores on a leaderboard where lower times rank higher
 - Compete for a jackpot accumulated from player fees
