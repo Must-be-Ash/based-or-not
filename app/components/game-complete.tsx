@@ -61,6 +61,13 @@ const easABI = [
   },
 ];
 
+// Type for transaction response
+type TransactionResponseData = {
+  hash?: string;
+  transactionHash?: string;
+  [key: string]: unknown;
+};
+
 function formatTime(seconds: number | null): string {
   if (seconds === null || seconds <= 0) return "00.000";
   
@@ -129,6 +136,38 @@ Play now: ${appUrl}
 `);
   
   return `https://warpcast.com/~/compose?text=${text}`;
+}
+
+// Function to verify if an attestation was successfully recorded
+async function verifyAttestation(txHash: string, retries = 3, delay = 2000): Promise<boolean> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Wait for the attestation to be indexed
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      
+      // Query EAS API to check if the transaction was successful
+      const response = await fetch("https://base.easscan.org/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `query { attestation(where: { txid: { equals: "${txHash}" } }) { id } }`
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data?.data?.attestation?.id) {
+        console.log("Attestation verified successfully:", data.data.attestation.id);
+        return true;
+      }
+      
+      console.log(`Attestation not found yet, attempt ${i + 1}/${retries}`);
+    } catch (err) {
+      console.error("Error verifying attestation:", err);
+    }
+  }
+  
+  return false;
 }
 
 export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProps) {
@@ -280,7 +319,19 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
                     ],
                   },
                 ]}
-                onSuccess={async () => {
+                onSuccess={async (data) => {
+                  // Get transaction hash from the transaction response
+                  const txData = data as TransactionResponseData;
+                  const txHash = txData?.hash || txData?.transactionHash || "";
+                  
+                  // Attempt to verify attestation submission
+                  if (txHash) {
+                    const verified = await verifyAttestation(txHash, 5, 3000);
+                    if (!verified) {
+                      console.warn("Could not verify attestation - will rely on chain indexing");
+                    }
+                  }
+                  
                   await sendNotification({
                     title: "Congratulations!",
                     body: `You scored a new time of ${formatTime(validBestTime)} on the precision timer!`,
@@ -291,13 +342,15 @@ export default function GameComplete({ bestTime, onPlayAgain }: GameCompleteProp
                     await notifyPreviousRecordHolder(previousRecordHolder, validBestTime);
                   }
                   
+                  // Force a refresh of high scores
                   invalidateHighScores();
+                  
                   // After successful submission, allow playing again
                   onPlayAgain();
                 }}
-                onError={(error: TransactionError) =>
-                  console.error("Attestation failed:", error)
-                }
+                onError={(error: TransactionError) => {
+                  console.error("Attestation failed:", error);
+                }}
               >
                 <TransactionButton
                   text="Submit your time"

@@ -122,7 +122,7 @@ async function fetchLastAttestations() {
       attestations(
         where: { schemaId: { equals: "${SCHEMA_UID}" } }
         orderBy: { time: desc }
-        take: 8
+        take: 50
       ) {
         decodedDataJson
         attester
@@ -136,30 +136,61 @@ async function fetchLastAttestations() {
   try {
     // Add timeout to the fetch operation
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout (increased from 5s)
     
-    const response = await fetch(EAS_GRAPHQL_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query }),
-      signal: controller.signal
-    });
+    // Try multiple EAS endpoints for redundancy
+    const easEndpoints = [
+      EAS_GRAPHQL_URL,
+      "https://base.easscan.org/graphql",
+      "https://api.easscan.org/graphql" // Fallback endpoint
+    ];
+    
+    let lastError = null;
+    let data = null;
+    
+    // Try each endpoint until one works
+    for (const endpoint of easEndpoints) {
+      try {
+        console.log(`Trying EAS endpoint: ${endpoint}`);
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+          signal: controller.signal
+        });
+        
+        if (!response.ok) {
+          console.warn(`EAS GraphQL at ${endpoint} responded with status: ${response.status}`);
+          continue;
+        }
+
+        const result = await response.json();
+        
+        if (result.errors) {
+          console.warn(`GraphQL errors from ${endpoint}:`, result.errors);
+          continue;
+        }
+        
+        data = result.data;
+        if (data && data.attestations && data.attestations.length > 0) {
+          // We have valid data, break out of loop
+          break;
+        }
+      } catch (endpointErr) {
+        console.warn(`Error with EAS endpoint ${endpoint}:`, endpointErr);
+        lastError = endpointErr;
+      }
+    }
     
     clearTimeout(timeoutId);
     
-    if (!response.ok) {
-      console.warn(`EAS GraphQL responded with status: ${response.status}`);
-      return MOCK_SCORES;
-    }
-
-    const { data, errors } = await response.json();
-    
-    if (errors) {
-      console.warn("GraphQL errors:", errors);
+    // If we didn't get any data from any endpoint
+    if (!data || !data.attestations) {
+      console.warn("All EAS endpoints failed, using mock data. Last error:", lastError);
       return MOCK_SCORES;
     }
     
-    const scores = (data?.attestations ?? [])
+    const scores = (data.attestations ?? [])
       .map((attestation: Attestation) => {
         try {
           const parsedData = JSON.parse(attestation?.decodedDataJson ?? "[]");
