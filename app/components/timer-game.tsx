@@ -39,6 +39,7 @@ import {
   TransactionToastLabel,
   TransactionError,
 } from "@coinbase/onchainkit/transaction";
+import Image from "next/image";
 
 const MAX_SCORES = 8;
 const ENTRY_FEE = 1; // $1 to play
@@ -86,34 +87,27 @@ export type Score = {
   time: number; // Time in milliseconds
 };
 
-// Mock data for when the API is unavailable
-const MOCK_SCORES: Score[] = [
-  {
-    attestationUid: "0x1234567890abcdef1234567890abcdef",
-    transactionHash: "0xabcdef1234567890abcdef1234567890",
-    address: "0x1234567890123456789012345678901234567890" as AddressType,
-    time: 0.124
-  },
-  {
-    attestationUid: "0x2345678901abcdef2345678901abcdef",
-    transactionHash: "0xbcdef1234567890abcdef12345678901",
-    address: "0x2345678901234567890123456789012345678901" as AddressType,
-    time: 0.217
-  },
-  {
-    attestationUid: "0x3456789012abcdef3456789012abcdef",
-    transactionHash: "0xcdef1234567890abcdef123456789012",
-    address: "0x3456789012345678901234567890123456789012" as AddressType,
-    time: 0.089
-  }
-];
-
 type Attestation = {
   decodedDataJson: string;
   attester: string;
   time: string;
   id: string;
   txid: string;
+};
+
+// Add type for Farcaster user data
+type FarcasterUser = {
+  username: string;
+  display_name: string;
+  pfp_url: string;
+};
+
+type FarcasterResponse = {
+  [address: string]: {
+    username: string;
+    display_name: string;
+    pfp_url: string;
+  }[];
 };
 
 async function fetchLastAttestations() {
@@ -186,8 +180,8 @@ async function fetchLastAttestations() {
     
     // If we didn't get any data from any endpoint
     if (!data || !data.attestations) {
-      console.warn("All EAS endpoints failed, using mock data. Last error:", lastError);
-      return MOCK_SCORES;
+      console.warn("All EAS endpoints failed. Last error:", lastError);
+      return []; // Return empty array instead of mock data
     }
     
     const scores = (data.attestations ?? [])
@@ -204,12 +198,23 @@ async function fetchLastAttestations() {
           if (match) {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const [_, address, time] = match;
-            return {
-              time: parseFloat(time),
-              address,
-              attestationUid: attestation.id,
-              transactionHash: attestation.txid,
-            };
+            
+            // Convert attestation timestamp to Date object
+            const attestationDate = new Date(parseInt(attestation.time) * 1000);
+            
+            // Check if the attestation is from May 2025
+            const isMay2025 = attestationDate.getFullYear() === 2025 && 
+                             attestationDate.getMonth() === 4; // Month is 0-based, so 4 is May
+            
+            // Only return scores from May 2025
+            if (isMay2025) {
+              return {
+                time: parseFloat(time),
+                address,
+                attestationUid: attestation.id,
+                transactionHash: attestation.txid,
+              };
+            }
           }
         } catch (err) {
           console.error("Error parsing attestation data:", err);
@@ -219,11 +224,10 @@ async function fetchLastAttestations() {
       .filter((item: Score | null): item is Score => item !== null)
       .sort((a: Score, b: Score) => a.time - b.time);
       
-    return scores.length > 0 ? scores : MOCK_SCORES;
+    return scores;
   } catch (err) {
     console.warn("Error fetching attestations:", err);
-    // Return mock data in case of error
-    return MOCK_SCORES;
+    return []; // Return empty array instead of mock data
   }
 }
 
@@ -414,13 +418,65 @@ function Intro({ onStartGame }: IntroProps) {
   const { highScores, jackpotAmount, loadHighScores } = useHighScores();
   const openUrl = useOpenUrl();
   const { address, chainId } = useAccount();
+  const [farcasterUsers, setFarcasterUsers] = useState<Record<string, FarcasterUser>>({});
 
   useEffect(() => {
     loadHighScores();
   }, [loadHighScores]);
 
+  // Add effect to fetch Farcaster data when highScores changes
+  useEffect(() => {
+    async function fetchFarcasterData() {
+      if (highScores.length === 0) return;
+      
+      // Get unique addresses
+      const addresses = [...new Set(highScores.map(score => score.address.toLowerCase()))];
+      
+      try {
+        const response = await fetch(`/api/farcaster?addresses=${addresses.join(',')}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch Farcaster data');
+        }
+        const data = await response.json() as FarcasterResponse;
+        
+        // Transform the data into a more usable format
+        const users: Record<string, FarcasterUser> = {};
+        Object.entries(data).forEach(([address, userArray]) => {
+          if (userArray?.[0]) {
+            users[address.toLowerCase()] = {
+              username: userArray[0].username,
+              display_name: userArray[0].display_name,
+              pfp_url: userArray[0].pfp_url
+            };
+          }
+        });
+        
+        setFarcasterUsers(users);
+      } catch (error) {
+        console.error('Error fetching Farcaster data:', error);
+      }
+    }
+
+    fetchFarcasterData();
+  }, [highScores]);
+
   const handleHighScoreClick = (score: Score) => {
     openUrl(`https://basescan.org/tx/${score.transactionHash}`);
+  };
+
+  const handleProfileClick = (username: string) => {
+    openUrl(`https://warpcast.com/${username}`);
+  };
+
+  // Function to get Farcaster username or display address
+  const getDisplayName = (address: string): string => {
+    const lowerAddress = address.toLowerCase();
+    const farcasterUser = farcasterUsers[lowerAddress];
+    if (farcasterUser) {
+      return `@${farcasterUser.username}`;
+    }
+    // If no Farcaster username, return shortened address
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   // Determine which USDC contract to use based on the connected network
@@ -512,34 +568,58 @@ function Intro({ onStartGame }: IntroProps) {
               <div className="p-3 text-center font-serif">No scores yet. Be the first to play!</div>
             ) : (
               highScores
-                .sort((a, b) => a.time - b.time) // Sort by time (ascending)
-                .map((score, index) => (
-                  <button
-                    type="button"
-                    key={score.attestationUid}
-                    className={`flex items-center w-full p-2 transition-all duration-200 hover:bg-blue-50 border-b border-blue-100 font-serif
-                      ${index === 0 ? 'bg-amber-50' : ''}`}
-                    onClick={() => handleHighScoreClick(score)}
-                  >
-                    <span className={`w-8 font-bold ${index === 0 ? 'text-amber-500' : index === 1 ? 'text-gray-500' : index === 2 ? 'text-amber-700' : 'text-gray-700'}`}>
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
-                    </span>
-                    <div className="flex items-center flex-grow">
-                      <Identity
-                        className="!bg-inherit space-x-1 px-0 [&>div]:space-x-2"
-                        address={score.address}
+                .sort((a, b) => a.time - b.time)
+                .map((score, index) => {
+                  const farcasterUser = farcasterUsers[score.address.toLowerCase()];
+                  return (
+                    <div
+                      key={score.attestationUid}
+                      className={`flex items-center w-full p-2 transition-all duration-200 border-b border-blue-100 font-serif
+                        ${index === 0 ? 'bg-amber-50' : ''}`}
+                    >
+                      <span className={`w-8 font-bold ${index === 0 ? 'text-amber-500' : index === 1 ? 'text-gray-500' : index === 2 ? 'text-amber-700' : 'text-gray-700'}`}>
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}
+                      </span>
+                      
+                      {/* Profile section - clickable for Farcaster profile */}
+                      <button
+                        type="button"
+                        className="flex items-center flex-grow hover:bg-blue-50 rounded-lg px-2 py-1 transition-colors"
+                        onClick={() => farcasterUser?.username && handleProfileClick(farcasterUser.username)}
+                        disabled={!farcasterUser?.username}
                       >
-                        <Name className="text-black font-medium" />
-                      </Identity>
-                      <div className="px-2 text-blue-500">
-                        <ArrowSvg />
-                      </div>
+                        <div className="flex items-center space-x-2">
+                          {farcasterUser?.pfp_url && (
+                            <Image 
+                              src={farcasterUser.pfp_url} 
+                              alt="Profile" 
+                              width={24}
+                              height={24}
+                              className="rounded-full"
+                            />
+                          )}
+                          <span className={`text-black font-medium ${farcasterUser?.username ? 'hover:text-blue-600 cursor-pointer' : ''}`}>
+                            {getDisplayName(score.address)}
+                          </span>
+                        </div>
+                      </button>
+
+                      {/* Score section - clickable for BaseScan transaction */}
+                      <button
+                        type="button"
+                        onClick={() => handleHighScoreClick(score)}
+                        className="flex items-center space-x-2 hover:bg-blue-50 rounded-lg px-2 py-1 transition-colors ml-auto"
+                      >
+                        <div className="text-blue-500">
+                          <ArrowSvg />
+                        </div>
+                        <div className={`text-right font-mono font-bold time-highlight ${getTimeColor(score.time)}`}>
+                          {formatTime(score.time)}
+                        </div>
+                      </button>
                     </div>
-                    <div className={`text-right flex-grow font-mono font-bold time-highlight ${getTimeColor(score.time)}`}>
-                      {formatTime(score.time)}
-                    </div>
-                  </button>
-                ))
+                  );
+                })
             )}
           </div>
         </div>
